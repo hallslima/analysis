@@ -53,7 +53,7 @@ except FileNotFoundError as e:
 # --- Barra Lateral de Filtros (Sidebar) ---
 st.sidebar.image("imagens/logo_usina_white.png", width=250)
 st.sidebar.header("Filtros")
-lista_supervisores = list(df_vendas['supervisor'].ugitnique())
+lista_supervisores = list(df_vendas['supervisor'].unique())
 lista_supervisores.insert(0, "Todos")
 supervisor_selecionado = st.sidebar.selectbox("Supervisor", lista_supervisores)
 lista_tipos = list(df_vendas['tipo_de_corretor'].unique())
