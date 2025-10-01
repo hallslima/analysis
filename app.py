@@ -73,7 +73,7 @@ if data_inicio and data_fim:
     df_filtrado = df_filtrado[(df_filtrado['data_vigencia'].dt.date >= data_inicio) & (df_filtrado['data_vigencia'].dt.date <= data_fim)]
 
 # --- Layout Principal com Abas ---
-st.title("🚀 Dashboard de Performance de Vendas")
+st.title("Dashboard de Performance de Vendas")
 st.markdown(f"Dados de **{data_inicio.strftime('%d/%m/%Y')}** a **{data_fim.strftime('%d/%m/%Y')}**")
 
 tab1, tab2, tab3, tab4 = st.tabs(["📊 Visão Geral", "📄 Análise de Planos", "🤖 Segmentação de Corretores (ML)", "💾 Dados Detalhados"])
