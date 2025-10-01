@@ -51,7 +51,7 @@ except FileNotFoundError as e:
     st.stop()
 
 # --- Barra Lateral de Filtros (Sidebar) ---
-st.sidebar.image("https://i.imgur.com/rIQ5TfD.png", width=250)
+st.sidebar.image("C:\Users\halli\OneDrive\HALLISSON\Documentos\analysis_brokers\imagens\logo_usina_white.png", width=250)
 st.sidebar.header("Filtros")
 lista_supervisores = list(df_vendas['supervisor'].unique())
 lista_supervisores.insert(0, "Todos")
