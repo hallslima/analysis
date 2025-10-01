@@ -51,7 +51,7 @@ except FileNotFoundError as e:
     st.stop()
 
 # --- Barra Lateral de Filtros (Sidebar) ---
-st.sidebar.image("/imagens/logo_usina_white.png", width=250)
+st.sidebar.image("imagens/logo_usina_white.png", width=250)
 st.sidebar.header("Filtros")
 lista_supervisores = list(df_vendas['supervisor'].ugitnique())
 lista_supervisores.insert(0, "Todos")
