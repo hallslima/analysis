@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from utils import load_data, segmenta_corretores, format_currency
 
-st.set_page_config(layout="wide", page_title="Análise de Corretor")
+st.set_page_config(layout="wide", page_title="Análise de Corrretor")
 
 # --- Carrega os dados ---
 df_vendas, df_pagamentos = load_data()
