@@ -1,0 +1,3 @@
+# Pastas de cache e ambiente virtual
+__pycache__/
+venv/
