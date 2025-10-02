@@ -3,36 +3,42 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from utils import load_data, segmenta_corretores, format_currency
+from utils import load_data, segmenta_corretores, format_currency, format_integer, render_sidebar
 
 st.set_page_config(layout="wide", page_title="Análise de Corretor")
 
+render_sidebar()
+
 # --- Carrega os dados ---
 df_vendas, df_pagamentos = load_data()
+if df_vendas is None:
+    st.stop()
 df_segmentado_geral, _ = segmenta_corretores(df_vendas)
 
-st.title("Análise Individual de Performance")
+st.title("🔎 Análise Individual de Performance")
+st.markdown("Selecione um corretor e o período para uma análise detalhada.")
 
-# --- Seletor de Corretor ---
-lista_corretores = sorted(df_vendas['corretor'].unique())
-corretor_selecionado = st.selectbox("Selecione um Corretor", lista_corretores)
+# --- FILTROS NO TOPO DA PÁGINA ---
+col1, col2, col3 = st.columns([2, 1, 1])
+with col1:
+    lista_corretores = sorted(df_vendas['corretor'].unique())
+    corretor_selecionado = st.selectbox("Selecione um Corretor", lista_corretores, label_visibility="collapsed")
 
-# --- Filtrando Dados para o Corretor Selecionado ---
 df_vendas_corretor = df_vendas[df_vendas['corretor'] == corretor_selecionado]
 df_pagamentos_corretor = df_pagamentos[df_pagamentos['corretor'] == corretor_selecionado]
 
-# --- Barra Lateral com Filtro de Data ---
-st.sidebar.header("Filtros da Página")
 data_min = df_vendas_corretor['data_vigencia'].min()
 data_max = df_vendas_corretor['data_vigencia'].max()
-data_inicio = st.sidebar.date_input("Data Início", data_min, min_value=data_min, max_value=data_max, key="data_inicio_individual")
-data_fim = st.sidebar.date_input("Data Fim", data_max, min_value=data_min, max_value=data_max, key="data_fim_individual")
 
-# Aplicando o filtro de data
+with col2:
+    data_inicio = st.date_input("Data Início", data_min, min_value=data_min, max_value=data_max)
+with col3:
+    data_fim = st.date_input("Data Fim", data_max, min_value=data_min, max_value=data_max)
+
+# --- Aplicando filtros ---
 df_vendas_filtrado = df_vendas_corretor[(df_vendas_corretor['data_vigencia'].dt.date >= data_inicio) & (df_vendas_corretor['data_vigencia'].dt.date <= data_fim)]
 df_pagamentos_filtrado = df_pagamentos_corretor[(df_pagamentos_corretor['data_baixa'].dt.date >= data_inicio) & (df_pagamentos_corretor['data_baixa'].dt.date <= data_fim)]
-
-st.markdown(f"Analisando dados de **{data_inicio.strftime('%d/%m/%Y')}** a **{data_fim.strftime('%d/%m/%Y')}**")
+st.markdown("---")
 
 if df_vendas_filtrado.empty:
     st.warning("O corretor selecionado não possui dados de vendas no período escolhido.")
@@ -43,6 +49,7 @@ else:
         perfil_ml = df_segmentado_geral[df_segmentado_geral['corretor'] == corretor_selecionado]['perfil_corretor'].iloc[0]
     tipos_corretor = df_vendas_filtrado['tipo_de_corretor'].unique()
     tipos_corretor_str = ", ".join(tipos_corretor)
+    
     col_perfil, col_tipo, col_supervisor = st.columns([1, 1, 2])
     with col_perfil:
         st.subheader("Perfil Geral (ML)")
@@ -68,7 +75,7 @@ else:
     total_comissao = df_pagamentos_filtrado['amount_to_pay'].sum()
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Vendido", format_currency(total_vendas))
-    col2.metric("Total de Vendas", f"{num_vendas}")
+    col2.metric("Total de Vendas", format_integer(num_vendas))
     col3.metric("Ticket Médio", format_currency(ticket_medio))
     col4.metric("Comissão Paga", format_currency(total_comissao))
     st.markdown("---")
@@ -82,9 +89,11 @@ else:
     vendas_resampled = df_vendas_filtrado.set_index('data_vigencia').resample(regra)['valor_proposta'].sum()
     comissoes_resampled = df_pagamentos_filtrado.set_index('data_baixa').resample(regra)['amount_to_pay'].sum()
     df_temporal = pd.DataFrame({'Vendas': vendas_resampled, 'Comissões': comissoes_resampled}).fillna(0)
+    df_temporal['Vendas_Formatado'] = df_temporal['Vendas'].apply(format_currency)
+    df_temporal['Comissoes_Formatado'] = df_temporal['Comissões'].apply(format_currency)
     fig_temporal = make_subplots(specs=[[{"secondary_y": True}]])
-    fig_temporal.add_trace(go.Scatter(x=df_temporal.index, y=df_temporal['Vendas'], name="Vendas", mode='lines+markers', line=dict(color='#007ACC')), secondary_y=False)
-    fig_temporal.add_trace(go.Scatter(x=df_temporal.index, y=df_temporal['Comissões'], name="Comissões", mode='lines+markers', line=dict(color='#FF8C00', dash='dot')), secondary_y=True)
+    fig_temporal.add_trace(go.Scatter(x=df_temporal.index, y=df_temporal['Vendas'], name="Vendas", mode='lines+markers', line=dict(color='#007ACC'), customdata=df_temporal['Vendas_Formatado'], hovertemplate='<b>Vendas</b><br>%{x|%d/%m/%Y}<br>%{customdata}<extra></extra>'), secondary_y=False)
+    fig_temporal.add_trace(go.Scatter(x=df_temporal.index, y=df_temporal['Comissões'], name="Comissões", mode='lines+markers', line=dict(color='#FF8C00', dash='dot'), customdata=df_temporal['Comissoes_Formatado'], hovertemplate='<b>Comissões</b><br>%{x|%d/%m/%Y}<br>%{customdata}<extra></extra>'), secondary_y=True)
     fig_temporal.update_yaxes(title_text="<b>Total de Vendas (R$)</b>", secondary_y=False)
     fig_temporal.update_yaxes(title_text="<b>Total de Comissões (R$)</b>", secondary_y=True)
     st.plotly_chart(fig_temporal, use_container_width=True)
@@ -96,14 +105,14 @@ else:
         st.subheader("Vendas por Operadora")
         df_operadora = df_vendas_filtrado['operadora'].value_counts().reset_index().sort_values(by='count', ascending=True)
         fig_operadora = px.bar(df_operadora, x='count', y='operadora', orientation='h', text='count')
-        fig_operadora.update_traces(textposition='outside', marker_color='#007ACC')
+        fig_operadora.update_traces(texttemplate='%{text:,.0f}'.replace(",", "."), textposition='outside', marker_color='#007ACC')
         fig_operadora.update_layout(yaxis_title=None, xaxis_title="Número de Vendas")
         st.plotly_chart(fig_operadora, use_container_width=True)
     with col_graf2:
         st.subheader("Top 10 Planos Vendidos")
         df_plano = df_vendas_filtrado['plano'].value_counts().nlargest(10).reset_index().sort_values(by='count', ascending=True)
         fig_plano = px.bar(df_plano, x='count', y='plano', orientation='h', text='count')
-        fig_plano.update_traces(textposition='outside', marker_color='skyblue')
+        fig_plano.update_traces(texttemplate='%{text:,.0f}'.replace(",", "."), textposition='outside', marker_color='skyblue')
         fig_plano.update_layout(yaxis_title=None, xaxis_title="Número de Vendas")
         st.plotly_chart(fig_plano, use_container_width=True)
 

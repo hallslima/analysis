@@ -3,12 +3,13 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import plotly.express as px
-from utils import load_data, segmenta_corretores, format_currency
+from utils import load_data, segmenta_corretores, format_currency, format_integer, render_sidebar
 
-# --- Configuração da Página ---
-st.set_page_config(layout="wide", page_title="Dashboard de Vendas & Performance")
+st.set_page_config(layout="wide", page_title="Dashboard de Vendas | Visão Geral")
 
-# --- Funções de Gráficos ---
+render_sidebar()
+
+# --- Funções de Gráfico ---
 def criar_grafico_top_corretores(df):
     if df.empty:
         st.warning("Não há dados de vendas para a seleção atual.")
@@ -23,45 +24,60 @@ def criar_grafico_top_corretores(df):
     plt.tight_layout()
     return fig
 
-def criar_grafico_vendas_operadora(df):
-    if df.empty: return None
-    vendas = df.groupby('operadora')['valor_proposta'].sum().nlargest(10).sort_values()
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.barh(vendas.index, vendas.values, color='skyblue')
-    ax.set_title("Top 10 Operadoras por Vendas", loc='left', fontsize=16)
-    ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x, p: f'R$ {int(x/1000)}k'))
-    ax.spines[['top', 'right']].set_visible(False)
-    plt.tight_layout()
-    return fig
-    
 def criar_treemap_planos(df):
     if df.empty: return None
     vendas_plano = df.groupby('plano')['valor_proposta'].sum().reset_index()
-    fig = px.treemap(vendas_plano, path=['plano'], values='valor_proposta',
-                     title='Distribuição de Vendas por Plano de Saúde',
+    vendas_plano['valor_formatado'] = vendas_plano['valor_proposta'].apply(format_currency)
+    fig = px.treemap(vendas_plano, 
+                     path=['plano'], 
+                     values='valor_proposta',
+                     custom_data=['valor_formatado'],
+                     title='Distribuição de Vendas por Plano',
                      color_discrete_sequence=px.colors.qualitative.Pastel)
-    fig.update_traces(textinfo='label+percent entry', hovertemplate='<b>%{label}</b><br>Vendas: R$ %{value:,.2f}<extra></extra>')
+    fig.update_traces(textinfo='label+percent entry', 
+                      hovertemplate='<b>%{label}</b><br>Vendas: %{customdata[0]}<extra></extra>')
+    return fig
+
+def criar_treemap_operadoras(df):
+    if df.empty: return None
+    vendas_operadora = df.groupby('operadora')['valor_proposta'].sum().reset_index()
+    vendas_operadora['valor_formatado'] = vendas_operadora['valor_proposta'].apply(format_currency)
+    fig = px.treemap(vendas_operadora, 
+                     path=['operadora'], 
+                     values='valor_proposta',
+                     custom_data=['valor_formatado'],
+                     title='Distribuição de Vendas por Operadora',
+                     color_discrete_sequence=px.colors.qualitative.Pastel2)
+    fig.update_traces(textinfo='label+percent entry', 
+                      hovertemplate='<b>%{label}</b><br>Vendas: %{customdata[0]}<extra></extra>')
+    return fig
+
+def criar_grafico_vendas_tempo(df):
+    if df.empty: return None
+    vendas_mensais = df.set_index('data_vigencia').resample('M')['valor_proposta'].sum().reset_index()
+    fig = px.line(vendas_mensais, x='data_vigencia', y='valor_proposta', markers=True,
+                  labels={'data_vigencia': 'Mês', 'valor_proposta': 'Total de Vendas'})
+    fig.update_traces(hovertemplate='<b>Mês</b>: %{x|%B de %Y}<br><b>Vendas</b>: %{y:,.2f}<extra></extra>')
+    fig.update_layout(title_text="Evolução das Vendas no Período", title_x=0.5)
     return fig
 
 # --- Carregamento dos Dados ---
-try:
-    df_vendas, df_pagamentos = load_data()
-except FileNotFoundError as e:
-    st.error(f"Erro: Arquivo de dados não encontrado. Verifique se os arquivos 'vendas.csv' e 'comissao.csv' estão na pasta 'data/'.")
+df_vendas, df_pagamentos = load_data()
+if df_vendas is None:
     st.stop()
 
-# --- Barra Lateral de Filtros (Sidebar) ---
-st.sidebar.image("imagens/logo_usina_white.png", width=250)
-st.sidebar.header("Filtros")
-lista_supervisores = list(df_vendas['supervisor'].unique())
-lista_supervisores.insert(0, "Todos")
-supervisor_selecionado = st.sidebar.selectbox("Supervisor", lista_supervisores)
-lista_tipos = list(df_vendas['tipo_de_corretor'].unique())
-lista_tipos.insert(0, "Todos")
-tipo_selecionado = st.sidebar.selectbox("Tipo de Corretor", lista_tipos)
-data_min, data_max = df_vendas['data_vigencia'].min(), df_vendas['data_vigencia'].max()
-data_inicio = st.sidebar.date_input("Data Início", data_min, min_value=data_min, max_value=data_max)
-data_fim = st.sidebar.date_input("Data Fim", data_max, min_value=data_min, max_value=data_max)
+# --- BARRA LATERAL (SIDEBAR) ---
+with st.sidebar.expander("FILTROS", expanded=True):
+    st.header("Filtros Globais")
+    lista_supervisores = list(df_vendas['supervisor'].unique())
+    lista_supervisores.insert(0, "Todos")
+    supervisor_selecionado = st.selectbox("Supervisor", lista_supervisores)
+    lista_tipos = list(df_vendas['tipo_de_corretor'].unique())
+    lista_tipos.insert(0, "Todos")
+    tipo_selecionado = st.selectbox("Tipo de Corretor", lista_tipos)
+    data_min, data_max = df_vendas['data_vigencia'].min(), df_vendas['data_vigencia'].max()
+    data_inicio = st.date_input("Data Início", data_min, min_value=data_min, max_value=data_max)
+    data_fim = st.date_input("Data Fim", data_max, min_value=data_min, max_value=data_max)
 
 # --- Filtragem dos Dados ---
 df_filtrado = df_vendas.copy()
@@ -73,10 +89,10 @@ if data_inicio and data_fim:
     df_filtrado = df_filtrado[(df_filtrado['data_vigencia'].dt.date >= data_inicio) & (df_filtrado['data_vigencia'].dt.date <= data_fim)]
 
 # --- Layout Principal com Abas ---
-st.title("Dashboard de Performance de Vendas")
+st.title("🚀 Dashboard de Performance de Vendas")
 st.markdown(f"Dados de **{data_inicio.strftime('%d/%m/%Y')}** a **{data_fim.strftime('%d/%m/%Y')}**")
 
-tab1, tab2, tab3, tab4 = st.tabs(["📊 Visão Geral", "📄 Análise de Planos", "🤖 Segmentação de Corretores (ML)", "💾 Dados Detalhados"])
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Visão Geral", "📄 Análise de Planos e Operadoras", "🤖 Segmentação de Corretores (ML)", "💾 Dados Detalhados"])
 
 with tab1:
     st.header("Principais Indicadores")
@@ -85,25 +101,34 @@ with tab1:
     ticket_medio = total_vendas / num_vendas if num_vendas > 0 else 0
     col1, col2, col3 = st.columns(3)
     col1.metric("Total de Vendas", format_currency(total_vendas))
-    col2.metric("Número de Vendas", f"{num_vendas}")
+    col2.metric("Número de Vendas", format_integer(num_vendas))
     col3.metric("Ticket Médio", format_currency(ticket_medio))
     st.markdown("---")
+    
+    fig_vendas_tempo = criar_grafico_vendas_tempo(df_filtrado)
+    if fig_vendas_tempo:
+        st.plotly_chart(fig_vendas_tempo, use_container_width=True)
+    
+    st.markdown("---")
+    
+    st.subheader("Desempenho dos Corretores")
+    fig_top_corretores = criar_grafico_top_corretores(df_filtrado)
+    if fig_top_corretores: 
+        st.pyplot(fig_top_corretores)
+
+with tab2:
+    st.header("Análise de Vendas por Plano e Operadora")
     col_graf1, col_graf2 = st.columns(2)
     with col_graf1:
-        st.subheader("Desempenho dos Corretores")
-        fig_top_corretores = criar_grafico_top_corretores(df_filtrado)
-        if fig_top_corretores: st.pyplot(fig_top_corretores)
+        st.info("Use o treemap para identificar os planos mais vendidos.")
+        fig_treemap_planos = criar_treemap_planos(df_filtrado)
+        if fig_treemap_planos:
+            st.plotly_chart(fig_treemap_planos, use_container_width=True)
     with col_graf2:
-        st.subheader("Desempenho por Operadora")
-        fig_vendas_operadora = criar_grafico_vendas_operadora(df_filtrado)
-        if fig_vendas_operadora: st.pyplot(fig_vendas_operadora)
-        
-with tab2:
-    st.header("Análise de Vendas por Plano de Saúde")
-    st.info("Use o treemap para identificar os planos mais vendidos. Passe o mouse sobre os retângulos para mais detalhes.")
-    fig_treemap = criar_treemap_planos(df_filtrado)
-    if fig_treemap:
-        st.plotly_chart(fig_treemap, use_container_width=True)
+        st.info("Use o treemap para identificar as operadoras com maior volume.")
+        fig_treemap_operadoras = criar_treemap_operadoras(df_filtrado)
+        if fig_treemap_operadoras: 
+            st.plotly_chart(fig_treemap_operadoras, use_container_width=True)
 
 with tab3:
     st.header("Segmentação de Corretores com Machine Learning")
@@ -111,7 +136,7 @@ with tab3:
     df_segmentado, df_analise_cluster = segmenta_corretores(df_filtrado)
     if df_segmentado is not None:
         st.subheader("Resumo dos Perfis Encontrados")
-        df_analise_cluster_styled = df_analise_cluster.style.format({"total_vendas": format_currency, "ticket_medio": format_currency, "num_vendas": "{:.0f}"})
+        df_analise_cluster_styled = df_analise_cluster.style.format({"total_vendas": format_currency, "ticket_medio": format_currency, "num_vendas": format_integer})
         st.dataframe(df_analise_cluster_styled)
         st.subheader("O que cada perfil significa?")
         for perfil_nome in df_analise_cluster['perfil'].unique():
@@ -131,7 +156,7 @@ with tab3:
         df_segmentado_filtrado = df_segmentado.copy()
         if perfil_selecionado != "Todos os Perfis":
             df_segmentado_filtrado = df_segmentado[df_segmentado['perfil_corretor'] == perfil_selecionado]
-        df_segmentado_styled = df_segmentado_filtrado[['corretor', 'perfil_corretor', 'total_vendas', 'num_vendas', 'ticket_medio']].style.format({"total_vendas": format_currency, "ticket_medio": format_currency, "num_vendas": "{:.0f}"})
+        df_segmentado_styled = df_segmentado_filtrado[['corretor', 'perfil_corretor', 'total_vendas', 'num_vendas', 'ticket_medio']].style.format({"total_vendas": format_currency, "ticket_medio": format_currency, "num_vendas": format_integer})
         st.dataframe(df_segmentado_styled)
         @st.cache_data
         def convert_df_to_csv(df):
