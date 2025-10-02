@@ -1,0 +1,47 @@
+CONSULTA SOBRE AS VENDAS
+
+SELECT
+    p.effective_date::date AS data_vigencia,
+    s.name AS supervisor,
+    b.name AS corretor,
+    bt.description AS tipo_de_corretor,
+    o.name AS operadora,
+    pl.description AS plano,
+    p.proposal_value AS valor_proposta
+FROM
+    proposals p
+JOIN
+    brokers b ON p.broker_id = b.id
+JOIN
+    broker_types bt ON b.broker_type_id = bt.id
+JOIN
+    supervisors s ON p.supervisor_id = s.id
+JOIN
+    plans pl ON p.plan_id = pl.id
+JOIN
+    operators o ON pl.operator_id = o.id
+WHERE
+    p.effective_date BETWEEN '2025-01-01' AND '2025-09-30'
+ORDER BY
+    p.effective_date;
+
+--------------------------------------------------------------
+
+CONSULTA SOBRE AS COMISSÇOES PAGAS AO corretor
+
+SELECT
+    r.discharge_date::date AS data_baixa,
+    b.name AS corretor,
+    bt.description AS tipo_de_corretor,
+    r.amount_to_pay
+FROM
+    receipts r
+JOIN
+    brokers b ON r.broker_id = b.id
+JOIN
+    broker_types bt ON b.broker_type_id = bt.id
+WHERE
+    r.discharge_date BETWEEN '2025-01-01' AND '2025-09-30'
+ORDER BY
+    r.discharge_date;
+
