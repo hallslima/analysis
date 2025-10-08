@@ -4,7 +4,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from utils import load_data, segmenta_corretores, format_currency, format_integer, render_sidebar
-
+# Verificação de segurança
+if st.session_state.get("password_correct", False) is False:
+    st.error("Você precisa fazer o login primeiro.")
+    st.stop() # Interrompe a execução da página
+    
 st.set_page_config(layout="wide", page_title="Análise de Corretor")
 
 render_sidebar()

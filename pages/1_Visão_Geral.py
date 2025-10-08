@@ -4,6 +4,11 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import plotly.express as px
 from utils import load_data, segmenta_corretores, format_currency, format_integer, render_sidebar
+# Verificação de segurança
+if st.session_state.get("password_correct", False) is False:
+    st.error("Você precisa fazer o login primeiro.")
+    st.stop() # Interrompe a execução da página
+
 
 st.set_page_config(layout="wide", page_title="Dashboard de Vendas | Visão Geral")
 
