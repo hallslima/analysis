@@ -9,17 +9,39 @@ def load_data():
     try:
         df_vendas = pd.read_csv('data/vendas.csv', parse_dates=['data_vigencia'])
         df_pagamentos = pd.read_csv('data/comissao.csv', parse_dates=['data_baixa'])
+        df_inativos = pd.read_csv('data/corretores_inativos.csv', parse_dates=['data'])
+        
+        # --- CARREGANDO E TRATANDO O NOVO ARQUIVO FINANCEIRO ---
+        # Lendo o arquivo com separador ; e pulando as primeiras linhas vazias
+        df_contas_pagar = pd.read_csv('data/contas_a_pagar_set24_set25.csv', delimiter=';', skiprows=1)
+        
+        # Limpando nomes das colunas
+        df_contas_pagar.columns = df_contas_pagar.columns.str.strip()
+
+        # Convertendo colunas de data (formato dd/mm/aaaa)
+        date_cols = ['Data de competência', 'Data de vencimento', 'Data prevista', 'Data do último pagamento']
+        for col in date_cols:
+            df_contas_pagar[col] = pd.to_datetime(df_contas_pagar[col], format='%d/%m/%Y', errors='coerce')
+
+        # Convertendo colunas de valores (formato 1.234,56)
+        value_cols = ['Valor original da parcela (R$)', 'Valor pago da parcela (R$)', 
+                      'Juros realizado (R$)', 'Valor total pago da parcela (R$)', 'Valor na Categoria 1']
+        for col in value_cols:
+            df_contas_pagar[col] = df_contas_pagar[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+            df_contas_pagar[col] = pd.to_numeric(df_contas_pagar[col], errors='coerce').fillna(0)
+
     except FileNotFoundError as e:
-        st.error(f"Erro ao carregar dados: O arquivo '{e.filename}' não foi encontrado. Verifique se o arquivo está na pasta 'data' e se o nome está correto.")
-        return None, None
+        st.error(f"Erro ao carregar dados: O arquivo '{e.filename}' não foi encontrado.")
+        return None, None, None, None
     
-    for df in [df_pagamentos, df_vendas]:
+    # Limpando os outros dataframes
+    for df in [df_pagamentos, df_vendas, df_inativos]:
         if df is not None:
             df.columns = df.columns.str.strip()
             for col in df.select_dtypes(['object']).columns:
                 df[col] = df[col].str.strip()
             
-    return df_vendas, df_pagamentos
+    return df_vendas, df_pagamentos, df_inativos, df_contas_pagar
 
 @st.cache_data
 def segmenta_corretores(df):
