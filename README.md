@@ -1,6 +1,6 @@
 # Dashboard de Análise de Vendas e Performance
 
-## 📄 Visão Geral
+## Visão Geral
 
 Este é um dashboard interativo de Business Intelligence construído em Python com o framework Streamlit. A aplicação transforma dados brutos de vendas, comissões e atividades de corretores em insights visuais e acionáveis, projetado para auxiliar gestores de vendas, analistas e a diretoria financeira na tomada de decisões estratégicas.
 
@@ -36,7 +36,7 @@ O projeto é organizado em uma estrutura modular para facilitar a manutenção e
 
 ```
 .
-├── 1_📊_Visão_Geral.py             # Página principal do dashboard
+├── 1_Visão_Geral.py             # Página principal do dashboard
 ├── utils.py                        # Funções de suporte (carregar dados, formatação, etc.)
 ├── requirements.txt                # Lista de dependências do projeto
 ├── .streamlit/
@@ -49,9 +49,9 @@ O projeto é organizado em uma estrutura modular para facilitar a manutenção e
 ├── imagens/
 │   └── logo_usina_white.png        # Logo da empresa
 └── pages/
-    ├── 2_🔎_Análise_Individual_do_Corretor.py
-    ├── 3_🏢_Análise_por_Tipo_de_Corretor.py
-    └── 4_💰_Análise_Financeira.py
+    ├── 2_Análise_Individual_do_Corretor.py
+    ├── 3_Análise_por_Tipo_de_Corretor.py
+    └── 4_Análise_Financeira.py
 ```
 
 ---
@@ -91,16 +91,9 @@ pip install -r requirements.txt
 
 **4. Execute a Aplicação:**
 ```bash
-streamlit run 1_📊_Visão_Geral.py
+streamlit run 1_Visão_Geral.py
 ```
 A aplicação abrirá automaticamente no seu navegador padrão.
 
----
 
-## 📊 Fontes de Dados
 
-Os dados utilizados neste dashboard são provenientes de quatro arquivos CSV localizados na pasta `data/`:
--   `vendas.csv`: Contém o registro de todas as vendas realizadas.
--   `comissao.csv`: Contém o registro de todas as comissões pagas aos corretores.
--   `corretores_inativos.csv`: Lista os corretores que não realizaram vendas em determinados períodos.
--   `contas_a_pagar_set24_set25.csv`: Contém os registros de despesas e contas a pagar da empresa.# Testando o git
